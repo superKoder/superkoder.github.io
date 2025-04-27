@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Interactive YouTube Video - Typing Answer with Correct Feedback</title>
+    <style>
+        #questionBox {
+            position: relative;
+            background: white;
+            border: 2px solid black;
+            padding: 20px;
+            text-align: center;
+            font-size: 18px;
+            z-index: 1001;
+        }
+
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        #errorMessage {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .error {
+            color: red;
+        }
+
+        .correct {
+            color: green;
+        }
+
+        #videoContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 0;
+            /* Behind overlay */
+            background-color: black;
+            /* Optional: black background behind video */
+        }
+
+        #player {
+            transition: opacity 0.5s ease;
+            /* Smooth fade in/out */
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="videoContainer">
+        <div id="player"></div>
+    </div>
+
+    <div id="overlay">
+        <div id="questionBox">
+            <p id="questionText"></p>
+            <input type="text" id="userAnswer" placeholder="Type your answer here..." />
+            <br><br>
+            <button id="submitButton">Submit</button>
+            <div id="errorMessage"></div>
+        </div>
+    </div>
+
+    <script>
+        let player;
+        let interactionIndex = 0;
+
+        const config = {
+            videoId: "uyiG6uw-6pA",
+            interactions: [
+                {
+                    time: 5,
+                    question: "What color was visible in the background?",
+                    correctAnswer: "blue"
+                },
+                {
+                    time: 15,
+                    question: "What move did the dancer do?",
+                    correctAnswer: "spin"
+                }
+            ]
+        };
+
+        let nextInteraction = config.interactions[interactionIndex];
+
+        var tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.head.appendChild(tag);
+
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('player', {
+                height: '720',
+                width: '1280',
+                videoId: config.videoId,
+                playerVars: {
+                    rel: 0,         // No related videos
+                    modestbranding: 1, // (Optional) Hide YouTube logo a bit
+                    controls: 1,    // (Optional) Keep controls visible
+                    disablekb: 0    // (Optional) Allow keyboard controls
+                },
+                events: {
+                    'onReady': onPlayerReady
+                }
+            });
+        }
+
+        function onPlayerReady(event) {
+            event.target.playVideo();
+            monitorVideo();
+        }
+
+        function monitorVideo() {
+            setInterval(() => {
+                if (player && player.getCurrentTime && nextInteraction) {
+                    const currentTime = player.getCurrentTime();
+                    if (currentTime >= nextInteraction.time) {
+                        pauseAndAskQuestion(nextInteraction.question, nextInteraction.correctAnswer);
+                        interactionIndex++;
+                        nextInteraction = config.interactions[interactionIndex];
+                    }
+                }
+            }, 200);
+        }
+
+        function pauseAndAskQuestion(question, correctAnswer) {
+            const questionTextElement = document.getElementById('questionText');
+            const overlayElement = document.getElementById('overlay');
+            const submitButton = document.getElementById('submitButton');
+            const userAnswerInput = document.getElementById('userAnswer');
+            const errorMessage = document.getElementById('errorMessage');
+            const playerElement = document.getElementById('player');
+
+            // Show overlay and fade out the player
+            overlayElement.style.display = 'flex';
+            playerElement.style.opacity = '0'; // <-- fade out
+
+            player.pauseVideo();
+
+            userAnswerInput.value = "";
+            errorMessage.textContent = "";
+            errorMessage.className = "";
+            questionTextElement.textContent = question;
+            userAnswerInput.focus();
+
+            submitButton.onclick = () => {
+                const userAnswer = userAnswerInput.value.trim().toLowerCase();
+                const expectedAnswer = correctAnswer.trim().toLowerCase();
+                if (userAnswer === expectedAnswer) {
+                    errorMessage.textContent = "Correct!";
+                    errorMessage.className = "correct";
+
+                    setTimeout(() => {
+                        overlayElement.style.display = 'none';
+                        playerElement.style.opacity = '1'; // <-- fade back in
+                        player.playVideo();
+                    }, 1000); // wait 1 second
+                } else {
+                    errorMessage.textContent = "Incorrect. Try again!";
+                    errorMessage.className = "error";
+                }
+            };
+
+            userAnswerInput.onkeydown = (event) => {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    submitButton.click();
+                }
+            };
+        }
+
+
+    </script>
+
+</body>
+
+</html>
